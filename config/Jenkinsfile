@@ -1,0 +1,278 @@
+// Initialize all the ghprb variables we need
+env.ghprbGhRepository = env.ghprbGhRepository ?: ''
+env.ghprbActualCommit = env.ghprbActualCommit ?: ''
+env.ghprbPullAuthorLogin = env.ghprbPullAuthorLogin ?: ''
+env.ghprbPullId = env.ghprbPullId ?: ''
+
+// Set the rpm_repo variable based on github commit
+//env.rpm_repo = "http://38.145.33.116/systemd-pr/" + "${env.ghprbActualCommit}".substring(0,2) + "/" + "${env.ghprbActualCommit}".substring(2,4) + "/" + "${env.ghprbActualCommit}" + "_dev/"
+env.rpm_repo = "http://38.145.33.116/systemd-pr/d7/17/d71716fccdda76ec6ef42a7dbd1eb1016fa2fd96_dev/"
+
+// Needed for podTemplate()
+env.SLAVE_TAG = env.SLAVE_TAG ?: 'stable'
+env.INQUIRER_TAG = env.INQUIRER_TAG ?: 'stable'
+env.CLOUD_IMAGE_COMPOSE_TAG = env.CLOUD_IMAGE_COMPOSE_TAG ?: 'stable'
+env.SINGLEHOST_TEST_TAG = env.SINGLEHOST_TEST_TAG ?: 'stable'
+env.OSTREE_BOOT_IMAGE_TAG = env.OSTREE_BOOT_IMAGE_TAG ?: 'stable'
+
+env.DOCKER_REPO_URL = env.DOCKER_REPO_URL ?: '172.30.1.1:5000'
+env.OPENSHIFT_NAMESPACE = env.OPENSHIFT_NAMESPACE ?: 'continuous-infra'
+env.OPENSHIFT_SERVICE_ACCOUNT = env.OPENSHIFT_SERVICE_ACCOUNT ?: 'jenkins'
+
+// Audit file for all messages sent.
+// msgAuditFile = "messages/message-audit.json"
+
+// Number of times to keep retrying to make sure message is ingested
+// by datagrepper
+// fedmsgRetryCount = 120
+
+// Execution ID for this run of the pipeline
+executionID = UUID.randomUUID().toString()
+
+// Pod name to use
+podName = 'fedora-cloud-' + executionID + '-systemd'
+
+library identifier: "ci-pipeline@master",
+        retriever: modernSCM([$class: 'GitSCMSource',
+                              remote: "https://github.com/CentOS-Paas-SIG/ci-pipeline"])
+properties(
+        [
+                buildDiscarder(logRotator(artifactDaysToKeepStr: '30', artifactNumToKeepStr: '15', daysToKeepStr: '90', numToKeepStr: '30')),
+                disableConcurrentBuilds(),
+                parameters(
+                        [
+                                string(defaultValue: 'systemd', description: 'Name of package to be tested', name: 'package'),
+                                string(defaultValue: 'master', description: '', name: 'ghprbActualCommit'),
+                                string(defaultValue: 'CentOS-PaaS-SIG/ci-pipeline', description: '', name: 'ghprbGhRepository'),
+                                string(defaultValue: '', description: '', name: 'sha1'),
+                                string(defaultValue: '', description: 'Pull Request Number', name: 'ghprbPullId'),
+                                string(defaultValue: '', description: 'Pull Request Author username', name: 'ghprbPullAuthorLogin'),
+                                string(defaultValue: 'stable', description: 'Tag for slave image', name: 'SLAVE_TAG'),
+                                string(defaultValue: 'stable', description: 'Tag for inquirer image', name: 'INQUIRER_TAG'),
+                                string(defaultValue: 'stable', description: 'Tag for cloud-image-compose image', name: 'CLOUD_IMAGE_COMPOSE_TAG'),
+                                string(defaultValue: 'stable', description: 'Tag for ostree boot image', name: 'OSTREE_BOOT_IMAGE_TAG'),
+                                string(defaultValue: 'stable', description: 'Tag for singlehost test image', name: 'SINGLEHOST_TEST_TAG'),
+                                string(defaultValue: '172.30.1.1:5000', description: 'Docker repo url for Openshift instance', name: 'DOCKER_REPO_URL'),
+                                string(defaultValue: 'continuous-infra', description: 'Project namespace for Openshift operations', name: 'OPENSHIFT_NAMESPACE'),
+                                string(defaultValue: 'jenkins', description: 'Service Account for Openshift operations', name: 'OPENSHIFT_SERVICE_ACCOUNT'),
+                        ]
+                ),
+        ]
+)
+
+podTemplate(name: podName,
+            label: podName,
+            cloud: 'openshift',
+            serviceAccount: OPENSHIFT_SERVICE_ACCOUNT,
+            idleMinutes: 0,
+            namespace: OPENSHIFT_NAMESPACE,
+
+        containers: [
+                // This adds the custom slave container to the pod. Must be first with name 'jnlp'
+                containerTemplate(name: 'jnlp',
+                        image: DOCKER_REPO_URL + '/' + OPENSHIFT_NAMESPACE + '/jenkins-continuous-infra-slave:' + SLAVE_TAG,
+                        ttyEnabled: false,
+                        args: '${computer.jnlpmac} ${computer.name}',
+                        command: '',
+                        workingDir: '/workDir'),
+                // This adds the inquirer container to the pod.
+                containerTemplate(name: 'inquirer',
+                        alwaysPullImage: true,
+                        image: DOCKER_REPO_URL + '/' + OPENSHIFT_NAMESPACE + '/inquirer:' + INQUIRER_TAG,
+                        ttyEnabled: true,
+                        command: 'cat',
+                        privileged: true,
+                        workingDir: '/workDir'),
+                // This adds the cloud-image-compose test container to the pod.
+                containerTemplate(name: 'cloud-image-compose',
+                        alwaysPullImage: true,
+                        image: DOCKER_REPO_URL + '/' + OPENSHIFT_NAMESPACE + '/cloud-image-compose:' + CLOUD_IMAGE_COMPOSE_TAG,
+                        ttyEnabled: true,
+                        command: 'cat',
+                        privileged: true,
+                        workingDir: '/workDir'),
+                // This adds the singlehost test container to the pod.
+                containerTemplate(name: 'singlehost-test',
+                        alwaysPullImage: true,
+                        image: DOCKER_REPO_URL + '/' + OPENSHIFT_NAMESPACE + '/singlehost-test:' + SINGLEHOST_TEST_TAG,
+                        ttyEnabled: true,
+                        command: 'cat',
+                        privileged: true,
+                        workingDir: '/workDir'),
+                // This adds the ostree boot image container to the pod.
+                containerTemplate(name: 'ostree-boot-image',
+                        alwaysPullImage: true,
+                        image: DOCKER_REPO_URL + '/' + OPENSHIFT_NAMESPACE + '/ostree-boot-image:' + OSTREE_BOOT_IMAGE_TAG,
+                        ttyEnabled: true,
+                        command: '/usr/sbin/init',
+                        privileged: true,
+                        workingDir: '/workDir')
+        ],
+        volumes: [emptyDirVolume(memory: false, mountPath: '/sys/class/net')])
+{
+    node(podName) {
+
+        def currentStage = ""
+
+        ansiColor('xterm') {
+            timestamps {
+                // We need to set env.HOME because the openshift slave image
+                // forces this to /home/jenkins and then ~ expands to that
+                // even though id == "root"
+                // See https://github.com/openshift/jenkins/blob/master/slave-base/Dockerfile#L5
+                //
+                // Even the kubernetes plugin will create a pod with containers
+                // whose $HOME env var will be its workingDir
+                // See https://github.com/jenkinsci/kubernetes-plugin/blob/master/src/main/java/org/csanchez/jenkins/plugins/kubernetes/KubernetesLauncher.java#L311
+                //
+                env.HOME = "/root"
+                //
+                try {
+                    // Prepare our environment
+                    currentStage = "prepare-environment"
+                    stage(currentStage) {
+                        deleteDir()
+                        // Set our default env variables. Many of these
+                        // are ci-pipeline specific, but we do need some
+                        pipelineUtils.setDefaultEnvVars()
+                        // Decorate our build
+                        currentBuild.displayName = "Build#: ${env.BUILD_NUMBER} - PR: ${env.ghprbPullId} - Author: ${env.ghprbPullAuthorLogin}"
+                        if (env.ghprbActualCommit != null && env.ghprbActualCommit != "master") {
+                            currentBuild.description = "<a href=\"https://github.com/${env.ghprbGhRepository}/pull/${env.ghprbPullId}\">PR #${env.ghprbPullId} (${env.ghprbPullAuthorLogin})</a>"
+                        }
+                        // Gather some info about the node we are running on for diagnostics
+                        pipelineUtils.verifyPod(OPENSHIFT_NAMESPACE, env.NODE_NAME)
+                        // create audit message file
+                        //pipelineUtils.initializeAuditFile(msgAuditFile)
+                    }
+
+                    // Set our current stage value
+                    currentStage = "ci-pipeline-inquirer"
+                    stage(currentStage) {
+
+                        // SCM
+                        dir('ci-pipeline') {
+                            // Checkout the ci-pipeline repo
+                            git([url: 'git://github.com/johnbieren/ci-pipeline.git', branch: 'testing_systemd'])
+                        }
+
+                        // Leaving all fedmsg code in line but commented
+                        // out in case the future intent is to use it
+                        // Return a map (messageFields) of our message topic, properties, and content
+                        //messageFields = pipelineUtils.setMessageFields("inquirer.running")
+
+                        // Send message org.foo.bar.inquirer.running on fedmsg
+                        //pipelineUtils.sendMessageWithAudit(messageFields['properties'], messageFields['content'], msgAuditFile, fedmsgRetryCount)
+
+                        // Set up environment variables for polling
+                        env.timeout = "600"
+                        env.interval = "10"
+                        env.remote_file = "${env.rpm_repo}" + "repodata/"
+
+                        // Poll url
+                        pipelineUtils.executeInContainer(currentStage, "inquirer", "/tmp/poller.sh")
+
+                        // Set our message topic, properties, and content
+                        //messageFields = pipelineUtils.setMessageFields("inquirer.complete")
+
+                        // Send message org.foo.bar.inquirer.complete on fedmsg
+                        //pipelineUtils.sendMessageWithAudit(messageFields['properties'], messageFields['content'], msgAuditFile, fedmsgRetryCount)
+                    }
+
+                    currentStage = "ci-pipeline-cloud-image-compose"
+                    stage(currentStage) {
+                        // Set our message topic, properties, and content
+                        //messageFields = pipelineUtils.setMessageFields("image.running")
+
+                        // Send message org.foo.bar.image.running on fedmsg
+                        //pipelineUtils.sendMessageWithAudit(messageFields['properties'], messageFields['content'], msgAuditFile, fedmsgRetryCount)
+
+                        // Compose image
+                        pipelineUtils.executeInContainer(currentStage, "cloud-image-compose", "/tmp/cloud-image-compose.sh")
+
+                        String untested_img_loc = "${env.WORKSPACE}/images/untested-cloud.qcow2"
+                        // Name it untested-atomic.qcow2 for singlehost-test
+                        // container compatibility
+                        sh "cp -f ${untested_img_loc} ${env.WORKSPACE}/untested-atomic.qcow2"
+
+                        // Set our message topic, properties, and content
+                        //messageFields = pipelineUtils.setMessageFields("image.complete")
+
+                        // Send message org.foo.bar.image.complete on fedmsg
+                        //pipelineUtils.sendMessageWithAudit(messageFields['properties'], messageFields['content'], msgAuditFile, fedmsgRetryCount)
+                    }
+
+                    currentStage = "ci-pipeline-cloud-image-boot-sanity"
+                    stage(currentStage) {
+                        // Set our message topic, properties, and content
+                        //messageFields = pipelineUtils.setMessageFields("image.test.smoke.running")
+
+                        // Send message org.foo.bar.image.test.smoke.running on fedmsg
+                        //pipelineUtils.sendMessageWithAudit(messageFields['properties'], messageFields['content'], msgAuditFile, fedmsgRetryCount)
+
+                        env.image2boot = "${env.WORKSPACE}/untested-atomic.qcow2"
+
+                        // Find out which rpm should be running
+                        pipelineUtils.executeInContainer(currentStage, "inquirer", "/tmp/find_nvr.sh")
+                        // Inject the $expected variable
+                        def package_props = "${env.WORKSPACE}/" + currentStage + "/logs/package.props"
+                        def package_props_groovy = "${env.WORKSPACE}/package.props.groovy"
+                        pipelineUtils.convertProps(package_props, package_props_groovy)
+                        load(package_props_groovy)
+
+                        // Run boot sanity on image
+                        pipelineUtils.executeInContainer(currentStage, "ostree-boot-image", "/home/ostree-boot-image.sh")
+
+                        // Set our message topic, properties, and content
+                        //messageFields = pipelineUtils.setMessageFields("image.test.smoke.complete")
+
+                        // Send message org.foo.bar.image.test.smoke.complete on fedmsg
+                        //pipelineUtils.sendMessageWithAudit(messageFields['properties'], messageFields['content'], msgAuditFile, fedmsgRetryCount)
+                    }
+
+                    currentStage = "ci-pipeline-functional-tests"
+                    stage(currentStage) {
+                        // Set our message topic, properties, and content
+                        //messageFields = pipelineUtils.setMessageFields("package.test.functional.running")
+
+                        // Send message org.foo.bar.package.test.functional.running on fedmsg
+                        //pipelineUtils.sendMessageWithAudit(messageFields['properties'], messageFields['content'], msgAuditFile, fedmsgRetryCount)
+
+                        // Run functional tests
+                        pipelineUtils.executeInContainer(currentStage, "singlehost-test", "/tmp/upstreamfirst-test.sh")
+
+                        // Set our message topic, properties, and content
+                        //messageFields = pipelineUtils.setMessageFields("package.test.functional.running")
+
+                        // Send message org.foo.bar.package.test.functional.running on fedmsg
+                        //pipelineUtils.sendMessageWithAudit(messageFields['properties'], messageFields['content'], msgAuditFile, fedmsgRetryCount)
+                    }
+
+                } catch (e) {
+                    // Set build result
+                    currentBuild.result = 'FAILURE'
+
+                    // Report the exception
+                    echo "Error: Exception from " + currentStage + ":"
+                    echo e.getMessage()
+
+                    // Throw the error
+                    throw e
+
+                } finally {
+                    pipelineUtils.getContainerLogsFromPod(OPENSHIFT_NAMESPACE, env.NODE_NAME)
+
+                    // Archive our artifacts
+                    step([$class: 'ArtifactArchiver', allowEmptyArchive: true, artifacts: '**/logs/**,*.txt,*.groovy,**/job.*,**/*.groovy,**/inventory.*', excludes: '**/job.props,**/job.props.groovy,**/*.example', fingerprint: true])
+
+                    // Set our message topic, properties, and content
+                    //messageFields = pipelineUtils.setMessageFields("complete")
+
+                    // Send message org.foo.bar.complete on fedmsg
+                    //pipelineUtils.sendMessageWithAudit(messageFields['properties'], messageFields['content'], msgAuditFile, fedmsgRetryCount)
+
+                }
+            }
+        }
+    }
+}
