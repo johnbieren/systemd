@@ -5,8 +5,7 @@ env.ghprbPullAuthorLogin = env.ghprbPullAuthorLogin ?: ''
 env.ghprbPullId = env.ghprbPullId ?: ''
 
 // Set the rpm_repo variable based on github commit
-//env.rpm_repo = "http://38.145.33.116/systemd-pr/" + "${env.ghprbActualCommit}".substring(0,2) + "/" + "${env.ghprbActualCommit}".substring(2,4) + "/" + "${env.ghprbActualCommit}" + "_dev/"
-env.rpm_repo = "http://38.145.33.116/systemd-pr/d7/17/d71716fccdda76ec6ef42a7dbd1eb1016fa2fd96_dev/"
+env.rpm_repo = "http://38.145.33.116/systemd-pr/" + "${env.ghprbActualCommit}".substring(0,2) + "/" + "${env.ghprbActualCommit}".substring(2,4) + "/" + "${env.ghprbActualCommit}" + "_dev/"
 
 // Needed for podTemplate()
 env.SLAVE_TAG = env.SLAVE_TAG ?: 'stable'
@@ -15,7 +14,7 @@ env.CLOUD_IMAGE_COMPOSE_TAG = env.CLOUD_IMAGE_COMPOSE_TAG ?: 'stable'
 env.SINGLEHOST_TEST_TAG = env.SINGLEHOST_TEST_TAG ?: 'stable'
 env.OSTREE_BOOT_IMAGE_TAG = env.OSTREE_BOOT_IMAGE_TAG ?: 'stable'
 
-env.DOCKER_REPO_URL = env.DOCKER_REPO_URL ?: '172.30.1.1:5000'
+env.DOCKER_REPO_URL = env.DOCKER_REPO_URL ?: '172.30.254.79:5000'
 env.OPENSHIFT_NAMESPACE = env.OPENSHIFT_NAMESPACE ?: 'continuous-infra'
 env.OPENSHIFT_SERVICE_ACCOUNT = env.OPENSHIFT_SERVICE_ACCOUNT ?: 'jenkins'
 
