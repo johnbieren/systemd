@@ -164,8 +164,8 @@ podTemplate(name: podName,
                         //pipelineUtils.sendMessageWithAudit(messageFields['properties'], messageFields['content'], msgAuditFile, fedmsgRetryCount)
 
                         // Set up environment variables for polling
-                        env.timeout = "600"
-                        env.interval = "10"
+                        env.timeout = "1800"
+                        env.interval = "30"
                         env.remote_file = "${env.rpm_repo}" + "repodata/"
 
                         // Poll url
