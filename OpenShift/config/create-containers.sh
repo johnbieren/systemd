@@ -4,7 +4,7 @@
 DEBUG=0
 
 ## Openshift Project. Will get created if it does not exist
-project="continuous-infra"
+project="systemd"
 
 ## List all templates to be processed
 templates="inquirer/inquirer-buildconfig-template.yaml \
