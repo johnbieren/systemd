@@ -5,7 +5,8 @@ env.ghprbPullAuthorLogin = env.ghprbPullAuthorLogin ?: ''
 env.ghprbPullId = env.ghprbPullId ?: ''
 
 // Set the rpm_repo variable based on github commit
-env.rpm_repo = "http://38.145.33.116/systemd-pr/" + "${env.ghprbActualCommit}".substring(0,2) + "/" + "${env.ghprbActualCommit}".substring(2,4) + "/" + "${env.ghprbActualCommit}" + "_dev/"
+//env.rpm_repo = "http://38.145.33.116/systemd-pr/" + "${env.ghprbActualCommit}".substring(0,2) + "/" + "${env.ghprbActualCommit}".substring(2,4) + "/" + "${env.ghprbActualCommit}" + "_dev/"
+env.rpm_repo = "http://38.145.33.116/systemd-pr/d7/17/d71716fccdda76ec6ef42a7dbd1eb1016fa2fd96_dev/"
 
 // Needed for podTemplate()
 env.SLAVE_TAG = env.SLAVE_TAG ?: 'stable'
@@ -14,8 +15,8 @@ env.CLOUD_IMAGE_COMPOSE_TAG = env.CLOUD_IMAGE_COMPOSE_TAG ?: 'stable'
 env.SINGLEHOST_TEST_TAG = env.SINGLEHOST_TEST_TAG ?: 'stable'
 env.OSTREE_BOOT_IMAGE_TAG = env.OSTREE_BOOT_IMAGE_TAG ?: 'stable'
 
-env.DOCKER_REPO_URL = env.DOCKER_REPO_URL ?: '172.30.254.79:5000'
-env.OPENSHIFT_NAMESPACE = env.OPENSHIFT_NAMESPACE ?: 'continuous-infra'
+env.DOCKER_REPO_URL = env.DOCKER_REPO_URL ?: '172.30.1.1:5000'
+env.OPENSHIFT_NAMESPACE = env.OPENSHIFT_NAMESPACE ?: 'systemd'
 env.OPENSHIFT_SERVICE_ACCOUNT = env.OPENSHIFT_SERVICE_ACCOUNT ?: 'jenkins'
 
 // Audit file for all messages sent.
@@ -52,7 +53,7 @@ properties(
                                 string(defaultValue: 'stable', description: 'Tag for ostree boot image', name: 'OSTREE_BOOT_IMAGE_TAG'),
                                 string(defaultValue: 'stable', description: 'Tag for singlehost test image', name: 'SINGLEHOST_TEST_TAG'),
                                 string(defaultValue: '172.30.1.1:5000', description: 'Docker repo url for Openshift instance', name: 'DOCKER_REPO_URL'),
-                                string(defaultValue: 'continuous-infra', description: 'Project namespace for Openshift operations', name: 'OPENSHIFT_NAMESPACE'),
+                                string(defaultValue: 'systemd', description: 'Project namespace for Openshift operations', name: 'OPENSHIFT_NAMESPACE'),
                                 string(defaultValue: 'jenkins', description: 'Service Account for Openshift operations', name: 'OPENSHIFT_SERVICE_ACCOUNT'),
                         ]
                 ),
@@ -69,7 +70,7 @@ podTemplate(name: podName,
         containers: [
                 // This adds the custom slave container to the pod. Must be first with name 'jnlp'
                 containerTemplate(name: 'jnlp',
-                        image: DOCKER_REPO_URL + '/' + OPENSHIFT_NAMESPACE + '/jenkins-continuous-infra-slave:' + SLAVE_TAG,
+                        image: DOCKER_REPO_URL + '/' + OPENSHIFT_NAMESPACE + '/jenkins-systemd-slave:' + SLAVE_TAG,
                         ttyEnabled: false,
                         args: '${computer.jnlpmac} ${computer.name}',
                         command: '',
@@ -164,7 +165,7 @@ podTemplate(name: podName,
                         //pipelineUtils.sendMessageWithAudit(messageFields['properties'], messageFields['content'], msgAuditFile, fedmsgRetryCount)
 
                         // Set up environment variables for polling
-                        env.timeout = "7200"
+                        env.timeout = "1800"
                         env.interval = "30"
                         env.remote_file = "${env.rpm_repo}" + "repodata/"
 
