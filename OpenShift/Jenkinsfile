@@ -51,7 +51,7 @@ properties(
                                 string(defaultValue: 'stable', description: 'Tag for cloud-image-compose image', name: 'CLOUD_IMAGE_COMPOSE_TAG'),
                                 string(defaultValue: 'stable', description: 'Tag for ostree boot image', name: 'OSTREE_BOOT_IMAGE_TAG'),
                                 string(defaultValue: 'stable', description: 'Tag for singlehost test image', name: 'SINGLEHOST_TEST_TAG'),
-                                string(defaultValue: '172.30.1.1:5000', description: 'Docker repo url for Openshift instance', name: 'DOCKER_REPO_URL'),
+                                string(defaultValue: '172.30.254.79:5000', description: 'Docker repo url for Openshift instance', name: 'DOCKER_REPO_URL'),
                                 string(defaultValue: 'continuous-infra', description: 'Project namespace for Openshift operations', name: 'OPENSHIFT_NAMESPACE'),
                                 string(defaultValue: 'jenkins', description: 'Service Account for Openshift operations', name: 'OPENSHIFT_SERVICE_ACCOUNT'),
                         ]
